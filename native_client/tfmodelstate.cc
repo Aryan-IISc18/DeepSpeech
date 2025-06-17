@@ -134,6 +134,7 @@ TFModelState::init(const char* model_path)
     NodeDef node = graph_def_.node(i);
     if (node.name() == "input_node") {
       const auto& shape = node.attr().at("shape").shape();
+      batch_size_ = shape.dim(0).size();
       n_steps_ = shape.dim(1).size();
       n_context_ = (shape.dim(2).size()-1)/2;
       n_features_ = shape.dim(3).size();
@@ -163,7 +164,7 @@ TFModelState::init(const char* model_path)
   if (n_context_ == -1 || n_features_ == -1) {
     std::cerr << "Error: Could not infer input shape from model file. "
               << "Make sure input_node is a 4D tensor with shape "
-              << "[batch_size=1, time, window_size, n_features]."
+              << "[batch_size, time, window_size, n_features]."
               << std::endl;
     return DS_ERR_INVALID_SHAPE;
   }
@@ -209,11 +210,11 @@ TFModelState::infer(const std::vector<float>& mfcc,
 {
   const size_t num_classes = alphabet_.GetSize() + 1; // +1 for blank
 
-  Tensor input = tensor_from_vector(mfcc, TensorShape({BATCH_SIZE, n_steps_, 2*n_context_+1, n_features_}));
-  Tensor previous_state_c_t = tensor_from_vector(previous_state_c, TensorShape({BATCH_SIZE, (long long)state_size_}));
-  Tensor previous_state_h_t = tensor_from_vector(previous_state_h, TensorShape({BATCH_SIZE, (long long)state_size_}));
+  Tensor input = tensor_from_vector(mfcc, TensorShape({batch_size_, n_steps_, 2*n_context_+1, n_features_}));
+  Tensor previous_state_c_t = tensor_from_vector(previous_state_c, TensorShape({batch_size_, (long long)state_size_}));
+  Tensor previous_state_h_t = tensor_from_vector(previous_state_h, TensorShape({batch_size_, (long long)state_size_}));
 
-  Tensor input_lengths(DT_INT32, TensorShape({1}));
+  Tensor input_lengths(DT_INT32, TensorShape({(long long)batch_size_}));
   input_lengths.scalar<int>()() = n_frames;
 
   vector<Tensor> outputs;
@@ -233,7 +234,7 @@ TFModelState::infer(const std::vector<float>& mfcc,
     return;
   }
 
-  copy_tensor_to_vector(outputs[0], logits_output, n_frames * BATCH_SIZE * num_classes);
+  copy_tensor_to_vector(outputs[0], logits_output, n_frames * batch_size_ * num_classes);
 
   state_c_output.clear();
   state_c_output.reserve(state_size_);

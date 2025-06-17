@@ -2,6 +2,50 @@
 #include "ctcdecode/decoder_utils.h"
 
 #include <fstream>
+#include <unordered_set>
+
+// Decode a single UTF-8 codepoint to a Unicode codepoint
+static char32_t utf8_to_codepoint(const std::string& cp)
+{
+  const unsigned char* s = reinterpret_cast<const unsigned char*>(cp.data());
+  size_t len = cp.size();
+  if (len == 0) {
+    return 0;
+  }
+  char32_t code = 0;
+  if ((s[0] & 0x80) == 0) {
+    return s[0];
+  } else if ((s[0] & 0xE0) == 0xC0 && len >= 2) {
+    code = s[0] & 0x1F;
+    code = (code << 6) | (s[1] & 0x3F);
+    return code;
+  } else if ((s[0] & 0xF0) == 0xE0 && len >= 3) {
+    code = s[0] & 0x0F;
+    code = (code << 6) | (s[1] & 0x3F);
+    code = (code << 6) | (s[2] & 0x3F);
+    return code;
+  } else if ((s[0] & 0xF8) == 0xF0 && len >= 4) {
+    code = s[0] & 0x07;
+    code = (code << 6) | (s[1] & 0x3F);
+    code = (code << 6) | (s[2] & 0x3F);
+    code = (code << 6) | (s[3] & 0x3F);
+    return code;
+  }
+  return 0;
+}
+
+// Return true if the UTF-8 character represents a whitespace codepoint
+static bool is_unicode_space(const std::string& cp)
+{
+  static const std::unordered_set<char32_t> spaces = {
+    0x0009, 0x000A, 0x000B, 0x000C, 0x000D, // ASCII control spaces
+    0x0020, 0x0085, 0x00A0, 0x1680,
+    0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005,
+    0x2006, 0x2007, 0x2008, 0x2009, 0x200A,
+    0x2028, 0x2029, 0x202F, 0x205F, 0x3000
+  };
+  return spaces.count(utf8_to_codepoint(cp)) > 0;
+}
 
 // std::getline, but handle newline conventions from multiple platforms instead
 // of just the platform this code was built for
@@ -53,8 +97,8 @@ Alphabet::init(const char *config_file)
     } else if (line[0] == '#') {
       continue;
     }
-    //TODO: we should probably do something more i18n-aware here
-    if (line == " ") {
+    auto cps = split_into_codepoints(line);
+    if (cps.size() == 1 && is_unicode_space(cps[0])) {
       space_label_ = label;
     }
     if (line.length() == 0) {

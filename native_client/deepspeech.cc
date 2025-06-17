@@ -252,7 +252,7 @@ StreamingState::processBatch(const vector<float>& buf, unsigned int n_steps)
                 previous_state_h_);
 
   const size_t num_classes = model_->alphabet_.GetSize() + 1; // +1 for blank
-  const int n_frames = logits.size() / (ModelState::BATCH_SIZE * num_classes);
+  const int n_frames = logits.size() / (model_->batch_size_ * num_classes);
 
   // Convert logits to double
   vector<double> inputs(logits.begin(), logits.end());
