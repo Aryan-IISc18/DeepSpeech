@@ -296,6 +296,7 @@ TFLiteModelState::init(const char* model_path)
 
   TfLiteIntArray* dims_input_node = interpreter_->tensor(input_node_idx_)->dims;
 
+  batch_size_ = dims_input_node->data[0];
   n_steps_ = dims_input_node->data[1];
   n_context_ = (dims_input_node->data[2] - 1) / 2;
   n_features_ = dims_input_node->data[3];
@@ -378,7 +379,7 @@ TFLiteModelState::infer(const vector<float>& mfcc,
     return;
   }
 
-  copy_tensor_to_vector(logits_idx_, n_frames * BATCH_SIZE * num_classes, logits_output);
+  copy_tensor_to_vector(logits_idx_, n_frames * batch_size_ * num_classes, logits_output);
 
   state_c_output.clear();
   state_c_output.reserve(state_size_);

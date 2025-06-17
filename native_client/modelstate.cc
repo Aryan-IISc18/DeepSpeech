@@ -7,7 +7,8 @@
 using std::vector;
 
 ModelState::ModelState()
-  : beam_width_(-1)
+  : batch_size_(1)
+  , beam_width_(-1)
   , n_steps_(-1)
   , n_context_(-1)
   , n_features_(-1)

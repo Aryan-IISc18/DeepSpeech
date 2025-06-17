@@ -12,8 +12,8 @@
 class DecoderState;
 
 struct ModelState {
-  //TODO: infer batch size from model/use dynamic batch size
-  static constexpr unsigned int BATCH_SIZE = 1;
+  // Batch size inferred from the model. Defaults to 1.
+  unsigned int batch_size_;
 
   Alphabet alphabet_;
   std::shared_ptr<Scorer> scorer_;
